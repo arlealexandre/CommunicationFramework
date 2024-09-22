@@ -1,6 +1,8 @@
+/.metadata/
+
+/Task1/.metadata/
+
 /SAR_Eclipse_Project/.project
 /SAR_Eclipse_Project/.classpath
 /SAR_Eclipse_Project/.settings/
 /SAR_Eclipse_Project/bin/
-
-/SAR_Eclipse_Project/Task1/.metadata/
