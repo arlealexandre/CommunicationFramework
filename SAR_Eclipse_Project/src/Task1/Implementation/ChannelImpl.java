@@ -16,9 +16,11 @@ public class ChannelImpl extends Channel {
     public ChannelImpl(Broker b, int port) {
     	super(b);
     	this.in = new CircularBuffer(1024);
+    	this.dangling = false;
     }
     
     public void connect(ChannelImpl remote, String name) {
+    	this.remoteChannel = remote;
     	remote.remoteChannel = this;
     	this.out = remote.in;
     	remote.out = this.in;

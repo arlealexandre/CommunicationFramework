@@ -37,26 +37,30 @@ public class BrokerImpl extends Broker {
 
 	@Override
 	public Channel connect(String name, int port) {
-		Broker remoteBroker = BrokerManager.getInstance().getBroker(name);
+		BrokerImpl remoteBroker = (BrokerImpl) BrokerManager.getInstance().getBroker(name);
 		
 		if (remoteBroker == null) {
 			return null;
 		} else {
-			RendezVous rdv;
-			synchronized(rendezVousList) {
-				rdv = rendezVousList.get(port);
-				
-				while (rdv == null) {
-					try {
-						rendezVousList.wait();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					rdv = rendezVousList.get(port);  
-				}
-			}
-			return (Channel) rdv.connect(this, port);
+			return remoteBroker._connect(this, port);
 		}
 	}
 
+	private Channel _connect(Broker broker, int port) {
+		RendezVous rdv;
+		synchronized(rendezVousList) {
+			rdv = rendezVousList.get(port);
+			
+			while (rdv == null) {
+				try {
+					rendezVousList.wait();
+				} catch (InterruptedException e) {
+					// nothing to do here
+				}
+				rdv = rendezVousList.get(port);  
+			}
+			rendezVousList.remove(port);
+		}
+		return rdv.connect(this, port);
+	}
 }
