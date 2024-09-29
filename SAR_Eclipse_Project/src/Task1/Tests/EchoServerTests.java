@@ -1,75 +1,74 @@
 package Task1.Tests;
 
 import Task1.API.*;
-import Task1.Mocks.*;
+import Task1.Implementation.BrokerImpl;
+import Task1.Implementation.TaskImpl;
 
 public class EchoServerTests {
 	
-	private static final String HOST = "localhost";
-	private static final int PORT = 5373;
-	
-	private static final int BUFFER_SIZE = 512;
-	
-	private static final String MESSAGE = "echo Hello";
-	private static final int MESSAGE_LENGTH = 10;
-
 	public static void main(String[] args) {
 		
-		Broker broker = new MockBroker(HOST); // Instance of Broker
+		Broker serverBroker = new BrokerImpl("ServerBroker");
+		Broker clientBroker = new BrokerImpl("ClientBroker");
 		
-		Task serverTask = new MockTask(broker, new Runnable() {
+		Task serverTask = new TaskImpl(serverBroker, new Runnable() {
 			public void run() {
 				
-				while (true) {
-					
-					Channel client = broker.accept(PORT);
-					assert client.disconnected() == false;
-					
-					byte[] buffer = new byte[BUFFER_SIZE];
-					
-					while(!client.disconnected()) {
-						
-						int bytesRead = client.read(buffer, 0, MESSAGE_LENGTH);
-						assert bytesRead > 0 && bytesRead <= MESSAGE_LENGTH;
-						
-						String message = new String(buffer, 0, bytesRead);
-						assert message.length() == MESSAGE_LENGTH;
-						assert message.equals(MESSAGE);
-						
-						client.write(buffer, 0, bytesRead);
-					}
-					
-					assert client.disconnected() == true;
-				}
+				System.out.println("Server: waiting for new client connection...");
+				
+				Broker broker = Task.getBroker();
+				Channel serverChannel = broker.accept(5373);
+				
+				byte[] buffer = new byte[256];
+		        int bytesRead = 0;
+		        try {
+		            while ((bytesRead = serverChannel.read(buffer, 0, buffer.length)) > 0) {
+		            	int byteWrite = 0;
+						while (byteWrite < bytesRead) {
+							byteWrite += serverChannel.write(buffer, byteWrite, bytesRead - byteWrite);
+						}        
+		             }
+		        } catch (DisconnectedException e) {
+		        	System.out.println("Disconnection occured");
+		        } finally {
+		        	serverChannel.disconnect();
+		        }
 			}
-		}); // Instance of Server
+		});
 		
-		Task clientTask = new MockTask(broker, new Runnable() {
+		Task clientTask = new TaskImpl(clientBroker, new Runnable() {
 			public void run() {
+				Broker broker = Task.getBroker();
+				Channel clientChannel = broker.connect("ServerBroker", 5373);
+		        
+		        try {
+		        	
+		        	String message = "Hello World!";
+					byte[] messageBytes = message.getBytes();
+		        	
+		        	int bytesWrite = 0;
+		        	while (bytesWrite < messageBytes.length) {
+		        		bytesWrite += clientChannel.write(messageBytes, bytesWrite, messageBytes.length - bytesWrite);
+		        	}
+		        	
+		            byte[] receivedBytes = new byte[255];
+		            int bytesRead = clientChannel.read(receivedBytes, 0, receivedBytes.length);
+		            
+		            String receivedMessage = new String(receivedBytes);
+		            assert receivedMessage.equals(message);
+		            
+		            System.out.println("Test: OK");
+		        } catch (DisconnectedException e) {
+		        	System.out.println("Disconnection occured");
+		        } finally {
+		        	clientChannel.disconnect();
+		        }
 				
-				Channel channel = broker.connect(HOST, PORT);
-				assert channel.disconnected() == false;
-								
-				System.out.println("Sending: "+MESSAGE);
-				int bytesWrite = channel.write(MESSAGE.getBytes(), 0, MESSAGE.length());
-				assert bytesWrite > 0 && bytesWrite <= MESSAGE.length();
-				
-				byte[] response = new byte[BUFFER_SIZE];
-				int bytesRead = channel.read(response, 0, MESSAGE_LENGTH);
-				assert bytesRead > 0 && bytesRead <= BUFFER_SIZE;
-				
-				String receivedMessage = new String(response,0,bytesRead);
-				assert receivedMessage.length() == MESSAGE_LENGTH;
-				assert receivedMessage == MESSAGE;
-				
-				System.out.println("Received: "+receivedMessage);
-				
-				channel.disconnect();
 			}
-		}); // Instance of Client
+		});
 		
-		// Start all tasks
         serverTask.start();
+        try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); }
         clientTask.start();
 	}
 
