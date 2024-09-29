@@ -1,63 +1,61 @@
 package Task1.Implementation;
 
 
+import java.util.HashMap;
+import java.util.Map;
+
 import Task1.API.Broker;
 import Task1.API.Channel;
 
 public class BrokerImpl extends Broker {
 	
+	private Map<Integer, RendezVous> rendezVousList;
+	
 	public BrokerImpl(String name) {
 		super(name);
-		BrokerManager.getInstance().addBroker(name, this);
+		rendezVousList = new HashMap<>();
+		BrokerManager.getInstance().addBroker(this);
 	}
 
 	@Override
-	public synchronized Channel accept(int port) {
-		RendezVous rdv = this.getRendezVousList().get(port);
+	public Channel accept(int port) {
+		RendezVous rdv;
 		
-        if (rdv == null) {
-            rdv = new RendezVous(port);
-            this.getRendezVousList().put(port, rdv);
-        }
-        
-        rdv.setAcceptBroker(this);
-        
-        while (!rdv.isComplete()) {
-			try {
-				wait();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+		synchronized(rendezVousList) {
+			rdv = this.rendezVousList.get(port);
+			if (rdv != null) {
+	        	throw new IllegalStateException("Port already accepting.");
+	        }
+	        
+	        rdv = new RendezVous();
+	        this.rendezVousList.put(port, rdv);
+	        this.rendezVousList.notifyAll();
 		}
-		
-		return (Channel) rdv.createChannel();
+        
+        return (Channel) rdv.accept(this, port);
 	}
 
 	@Override
-	public synchronized Channel connect(String name, int port) {
+	public Channel connect(String name, int port) {
 		Broker remoteBroker = BrokerManager.getInstance().getBroker(name);
 		
 		if (remoteBroker == null) {
-			return null; // no broker found
+			return null;
 		} else {
-			RendezVous rdv = remoteBroker.getRendezVousList().get(port);
-			
-			if (rdv == null) {
-				rdv = new RendezVous(port);
-				remoteBroker.getRendezVousList().put(port, rdv);
-			}
-			
-			rdv.setConnectBroker(this);
-			
-			while (!rdv.isComplete()) {
-				try {
-					wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+			RendezVous rdv;
+			synchronized(rendezVousList) {
+				rdv = rendezVousList.get(port);
+				
+				while (rdv == null) {
+					try {
+						rendezVousList.wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					rdv = rendezVousList.get(port);  
 				}
 			}
-			
-			return (Channel) rdv.createChannel();
+			return (Channel) rdv.connect(this, port);
 		}
 	}
 

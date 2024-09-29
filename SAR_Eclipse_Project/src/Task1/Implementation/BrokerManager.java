@@ -1,7 +1,7 @@
 package Task1.Implementation;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import Task1.API.Broker;
 
@@ -11,7 +11,7 @@ public class BrokerManager {
 	private Map<String, Broker> brokers;
 	
 	private BrokerManager() {
-		this.brokers = new ConcurrentHashMap<>();
+		this.brokers = new HashMap<>();
 	}
 	
 	public static synchronized BrokerManager getInstance() {
@@ -21,11 +21,15 @@ public class BrokerManager {
 		return instance;
 	}
 	
-	public void addBroker(String name, Broker broker) {
+	public synchronized void addBroker(Broker broker) {
+		String name = broker.getName();
+		if (this.brokers.containsKey(name)) {
+			throw new IllegalStateException("Broker "+name+" already exists.");
+		}
 		this.brokers.put(name, broker);
 	}
 	
-	public Broker getBroker(String name) {
+	public synchronized Broker getBroker(String name) {
 		return this.brokers.get(name);
 	}
 }
