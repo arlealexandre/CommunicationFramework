@@ -15,3 +15,9 @@ Tasks are Eclipse projects running under Java 17.
 - [Specification](https://github.com/arlealexandre/arlea-SAR/blob/main/Task2/Specification.md)
 - [Design](https://github.com/arlealexandre/arlea-SAR/blob/main/Task2/Design.md)
 - [Implementation](https://github.com/arlealexandre/arlea-SAR/tree/main/SAR_Eclipse_Project/src/Task2)
+
+# [Task3](https://github.com/arlealexandre/arlea-SAR/tree/task3) : mixing events and threads
+
+- [Specification](https://github.com/arlealexandre/arlea-SAR/tree/task3.specification/Task3/Specification.md)
+- [Design](https://github.com/arlealexandre/arlea-SAR/tree/task3.design/Task3/Design.md)
+- [Implementation](https://github.com/arlealexandre/arlea-SAR/tree/main/SAR_Eclipse_Project/src/Task3)
