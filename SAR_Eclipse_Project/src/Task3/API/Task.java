@@ -1,14 +1,29 @@
 package Task3.API;
 
-public abstract class Task {
+public abstract class Task extends Thread {
 	
-	public abstract void post(Runnable r);
-	
-	public static Task task() {
-		return null;
+	private Runnable runnable;
+	private QueueBroker queueBroker;
+
+	public Task(QueueBroker b, Runnable r) {
+		this.queueBroker = b;
+		this.runnable = r;
+	}
+			
+	@Override
+	public void run() {
+		if (this.runnable != null) {
+			runnable.run();
+		} else {
+			throw new NullPointerException("Runnable is null.");
+		}
 	}
 	
-	public abstract void kill();
-	
-	public abstract boolean killed();
+	public static QueueBroker getQueueBroker() {
+		if (Thread.currentThread() instanceof Task) {
+			return ((Task) Thread.currentThread()).queueBroker;
+		}
+		return null;
+	}
+
 }
