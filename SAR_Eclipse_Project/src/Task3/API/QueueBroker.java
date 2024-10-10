@@ -1,13 +1,7 @@
 package Task3.API;
 
 public abstract class QueueBroker {
-	
-	private String name;
-	
-	public QueueBroker(String name) {
-		this.name = name;
-	}
-	
+		
 	public interface AcceptListener {
 		void accepted(MessageQueue queue);
 	}
@@ -22,7 +16,4 @@ public abstract class QueueBroker {
 	
 	public abstract boolean connect(String name, int port, ConnectListener listener);
 	
-	public String getName() {
-		return this.name;
-	}
 }

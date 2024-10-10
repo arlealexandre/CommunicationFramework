@@ -3,16 +3,16 @@ package Task3.Implementation;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import Task3.API.EventTask;
+import Task3.API.Task;
 
 public class EventPump extends Thread {
 
 	private static EventPump instance;
-	private Queue<EventTask> eventQueue;
-	private EventTask currentTask;
+	private Queue<Runnable> eventQueue;
+	private Runnable currentTask;
 	private boolean running;
 	
-	public EventPump() {
+	private EventPump() {
 		eventQueue = new LinkedList<>();
 		running = true;
 		this.start();
@@ -26,12 +26,12 @@ public class EventPump extends Thread {
 		}
 	}
 	
-	public synchronized void postEvent(EventTask eventTask) {
+	public synchronized void postTask(Runnable eventTask) {
 		this.eventQueue.add(eventTask);
-		notify();
+		this.notify();
 	}
 	
-	public synchronized boolean removeEvent(EventTask eventTask) {
+	public synchronized boolean removeTask(Runnable eventTask) {
 		return this.eventQueue.remove(eventTask);
 	}
 	
@@ -43,29 +43,31 @@ public class EventPump extends Thread {
 		return null;
 	}
 	
-	public EventTask getCurrentTask() {
+	public Runnable getCurrentTask() {
 		return this.currentTask;
 	}
 	
 	@Override
 	public void run() {
-		while (running) {
-			EventTask eventTask = null;
+		while (this.running) {
+			Runnable task;
+			synchronized (this) {
+				while (this.eventQueue.isEmpty()) {
+					try {
+						wait();
+					} catch (InterruptedException e) {
+						return;
+					}
+				}
+			}
+			
+			task = this.eventQueue.poll(); // Fetch the next event
 
-            synchronized (eventQueue) {
-                if (!eventQueue.isEmpty()) {
-                	eventTask = eventQueue.poll();
-                	
-                	if (eventTask != null) {
-    	                try {
-    	                	this.currentTask = eventTask;
-    	                	eventTask.run();
-    	                } catch (Exception e) {
-    	                    e.printStackTrace();
-    	                }
-    	            }
-                }
-            }
+			if (task != null) {
+				this.currentTask = task;
+				task.run();
+				this.currentTask = null;
+			}
 		}
 	}
 	

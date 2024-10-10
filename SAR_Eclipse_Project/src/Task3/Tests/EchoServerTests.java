@@ -1,29 +1,25 @@
 package Task3.Tests;
 
-import Task3.API.*;
+import Task3.API.Message;
 import Task3.API.MessageQueue;
-import Task3.API.MessageQueue.Listener;
 import Task3.API.QueueBroker;
 import Task3.API.QueueBroker.AcceptListener;
 import Task3.API.QueueBroker.ConnectListener;
+import Task3.API.MessageQueue.Listener;
+import Task3.API.Task;
 import Task3.Implementation.QueueBrokerImpl;
-import Task3.Implementation.TaskImpl;
 
 public class EchoServerTests {
 
 	public static void main(String[] args) {
 		
-		QueueBroker serverQueueBroker = new QueueBrokerImpl("ServerQueueBroker");
-		QueueBroker clientQueueBroker = new QueueBrokerImpl("ClientQueueBroker");
-		
-		Task serverTask = new TaskImpl(serverQueueBroker, new Runnable() {
+		Task serverTask = new Task();
+		serverTask.post(new Runnable() {
 
 			@Override
 			public void run() {
-
-				QueueBroker queueBroker = Task.getQueueBroker();
-				
-				queueBroker.bind(5373, new AcceptListener () {
+				QueueBroker serverBroker = new QueueBrokerImpl("ServerBroker");
+				boolean bindResult = serverBroker.bind(5373, new AcceptListener () {
 
 					@Override
 					public void accepted(MessageQueue queue) {
@@ -32,83 +28,88 @@ public class EchoServerTests {
 
 							@Override
 							public void received(byte[] msg) {
-								queue.send(msg);
-								System.out.println("Message sent by server");
+								Message message = new Message(msg);
+								queue.send(message);
 							}
 
 							@Override
 							public void sent() {
-								System.out.println("A message has been sent.");
-							}
-
-							@Override
-							public void closed() {
-								System.out.println("MessageQueue is closed.");
-							}
-							
-						});
-					}
-					
-				});
-			}
-			
-		});
-		
-		TaskImpl clientTask = new TaskImpl(clientQueueBroker, new Runnable() {
-
-			@Override
-			public void run() {
-				QueueBroker queueBroker = TaskImpl.getQueueBroker();
-				
-				queueBroker.connect("ServerQueueBroker", 5373, new ConnectListener() {
-
-					@Override
-					public void connected(MessageQueue queue) {
-						String message = "Hello World!";
-						byte[] messageBytes = message.getBytes();
-						queue.send(messageBytes);
-						
-						queue.setListener((Listener) new Listener() {
-
-							@Override
-							public void received(byte[] msg) {
-								String receivedMessage = new String(msg);
-								System.out.println("Received: "+receivedMessage);
-								assert receivedMessage.equals(message);
-								System.out.println("Tests OK");
-							}
-
-							@Override
-							public void sent() {
-								System.out.println("A message has been sent.");
+								System.out.println("ServerBroker sent a message.");
 								
 							}
 
 							@Override
 							public void closed() {
-								System.out.println("MessageQueue is closed.");
+								System.out.println("ServerBroker's message queue is now closed.");
 							}
 							
 						});
-					}
-
-					@Override
-					public void refused() {
-						System.out.println("Connection has been refused");
+						
 					}
 					
 				});
+			
+				if (bindResult == false) {
+					System.out.println("ServerBroker failed to bind on port 5373.");
+				}
 			}
 			
 		});
 		
-		serverTask.start();
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			// nothing to do here
-		}
-		clientTask.start();
+		Task clientTask = new Task();
+		clientTask.post(new Runnable() {
+
+			@Override
+			public void run() {
+				QueueBroker clientBroker = new QueueBrokerImpl("ClientBroker");
+				boolean connectResult = clientBroker.connect("ServerBroker", 5373, new ConnectListener() {
+
+					@Override
+					public void connected(MessageQueue queue) {
+						System.out.println("Connection to ServerBroker on port 5373 has been successfully established.");
+						
+						queue.setListener(new Listener() {
+
+							@Override
+							public void received(byte[] msg) {
+								String message = new String(msg);
+								System.out.println("Received message: "+message);
+								assert message.equals("Hello World!");
+								System.out.println("Tests OK");
+							}
+
+							@Override
+							public void sent() {
+								System.out.println("ClientBroker sent a message.");
+								
+							}
+
+							@Override
+							public void closed() {
+								System.out.println("ClientBroker's message queue is now closed.");
+							}
+							
+						});
+						
+						String messageString = "Hello World!";
+						byte[] messageBytes = messageString.getBytes();
+						Message message = new Message(messageBytes);
+						queue.send(message);
+					}
+
+					@Override
+					public void refused() {
+						System.out.println("Connection refused.");
+					}
+					
+				});
+				
+				if (connectResult == false) {
+					System.out.println("ClientBroker failed to connect to ServerBroker on port 5373.");
+				}
+			}
+			
+		});
 	}
 }
 

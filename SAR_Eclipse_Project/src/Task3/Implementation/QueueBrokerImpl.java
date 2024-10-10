@@ -3,76 +3,153 @@ package Task3.Implementation;
 import java.util.HashMap;
 import java.util.Map;
 
+import Task1.API.Broker;
+import Task1.API.Channel;
+import Task1.API.DisconnectedException;
+import Task1.Implementation.BrokerImpl;
+import Task1.Implementation.BrokerManager;
+import Task1.Implementation.ChannelImpl;
 import Task3.API.*;
 
 public class QueueBrokerImpl extends QueueBroker {
 	
-	private Map<Integer, EventTask> eventTasks;
-	private AcceptingTaskEvent acceptTask;
-	private ConnectingTaskEvent connectTask;
+	private Broker broker;
+	private Map<Integer, QueueBroker.AcceptListener> accepts;
 
 	public QueueBrokerImpl(String name) {
-		super(name);
-		eventTasks = new HashMap<>();
-		QueueBrokerManager.getInstance().addQueueBroker(this);
+		this.broker = new BrokerImpl(name);
+		this.accepts = new HashMap<>();
 	}
 
 	@Override
 	public boolean bind(int port, AcceptListener listener) {
-		if (this.eventTasks.get(port) != null) {
-			return false; // task already bind
+		
+		synchronized(accepts) {
+			if (this.accepts.containsKey(port)) {
+				return false;
+			}
 		}
-		acceptTask = new AcceptingTaskEvent(port, listener);
-		this.eventTasks.put(port, acceptTask);
-		acceptTask.post(new Runnable() {
+				
+		Task task = new Task();
+		task.post(new Runnable() {
 
 			@Override
 			public void run() {
-				if (!acceptTask.isAlreadyAccepted()) {
-					EventPump.getInstance().postEvent(EventTask.task());
-				} else {
-					listener.accepted(acceptTask.getAcceptQueue());
-				}			
+				ChannelImpl channel = (ChannelImpl) broker.accept(port);
+				MessageQueue messageQueue = new MessageQueueImpl(channel);
+				listener.accepted(messageQueue);
+				
+				Task task = new Task();
+				task.post(new Runnable() {
+
+					@Override
+					public void run() {
+						try {
+							
+							// reading the length of the message
+							int bytesRead = 0;
+							byte[] lengthBytes = new byte[4];
+							while (bytesRead < 4) {
+								bytesRead += channel.read(lengthBytes, bytesRead, 4 - bytesRead);
+							}
+										
+							int length = (lengthBytes[0] << 24) | (lengthBytes[1] << 16) | (lengthBytes[2] << 8) | lengthBytes[3];
+
+							// reading the message
+							bytesRead = 0;
+							byte[] messageBytes = new byte[length];
+							while (bytesRead < length) {
+								bytesRead += channel.read(messageBytes, bytesRead, length - bytesRead);
+							}
+							
+							((MessageQueueImpl) messageQueue).getListener().received(messageBytes);
+						} catch (DisconnectedException e) {
+							e.printStackTrace();
+						}
+					}
+					
+				});
 			}
 			
 		});
+		
 		return true;
 	}
 
 	@Override
 	public boolean unbind(int port) {
-		EventTask eventTask = this.eventTasks.get(port);
-		if (!eventTask.killed()) {
-			eventTask.kill();
-			this.eventTasks.remove(port);
-			return true;
+		synchronized(accepts) {
+			if (this.accepts.containsKey(port)) {
+				return false;
+			}
 		}
-		return false;
+		synchronized(accepts) {
+			this.accepts.remove(port);
+		}
+		
+		return true;
 	}
 
 	@Override
 	public boolean connect(String name, int port, ConnectListener listener) {
-		QueueBroker queueBroker = QueueBrokerManager.getInstance().getQueueBroker(name);
+		Broker broker = BrokerManager.getInstance().getBroker(name);
 		
-		if (queueBroker == null) {
+		if (broker == null) {
 			return false;
 		}
 		
-		connectTask = new ConnectingTaskEvent(queueBroker, port, listener);
-		connectTask.post(new Runnable() {
+		Task task = new Task();
+		task.post(new Runnable() {
 
 			@Override
 			public void run() {
-				AcceptingTaskEvent eventTask = (AcceptingTaskEvent) eventTasks.get(port);
-				if (eventTask == null || eventTask.isAlreadyAccepted()) {
+				ChannelImpl channel = (ChannelImpl) broker.connect(name, port);
+				if (channel == null) {
 					listener.refused();
 				} else {
-					listener.connected(eventTask.getConnectQueue());
+					MessageQueue messageQueue = new MessageQueueImpl(channel);
+					listener.connected(messageQueue);
+					
+					Task task = new Task();
+					task.post(new Runnable() {
+
+						@Override
+						public void run() {
+							try {
+								
+								// reading the length of the message
+								int bytesRead = 0;
+								byte[] lengthBytes = new byte[4];
+								while (bytesRead < 4) {
+									bytesRead += channel.read(lengthBytes, bytesRead, 4 - bytesRead);
+								}
+											
+								int length = (lengthBytes[0] << 24) | (lengthBytes[1] << 16) | (lengthBytes[2] << 8) | lengthBytes[3];
+
+								// reading the message
+								bytesRead = 0;
+								byte[] messageBytes = new byte[length];
+								while (bytesRead < length) {
+									bytesRead += channel.read(messageBytes, bytesRead, length - bytesRead);
+								}
+								
+								((MessageQueueImpl) messageQueue).getListener().received(messageBytes);
+							} catch (DisconnectedException e) {
+								e.printStackTrace();
+							}
+						}
+						
+					});
 				}
 			}
 			
 		});
+		
 		return true;
+	}
+		
+	public Broker getBroker() {
+		return this.broker;
 	}
 
 }
