@@ -1,14 +1,32 @@
 package Task3.API;
 
-public abstract class Task {
+import Task3.Implementation.EventPump;
+
+public class Task {
 	
-	public abstract void post(Runnable r);
+	private boolean isKilled;
+	private EventPump eventPump;
+	protected Runnable runnable;
+	
+	public Task() {
+		this.isKilled = false;
+		this.eventPump = EventPump.getInstance();
+	}
+		
+	public void post(Runnable r) {
+		this.eventPump.postTask(r);
+	}
 	
 	public static Task task() {
 		return null;
 	}
 	
-	public abstract void kill();
+	public void kill() {
+		this.isKilled = true;
+	}
 	
-	public abstract boolean killed();
+	public boolean killed() {
+		return this.isKilled;
+	}
+	
 }

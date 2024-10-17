@@ -17,4 +17,16 @@ public class Message {
 		this.offset = offset;
 		this.length = length;
 	}
+
+	public byte[] getBytes() {
+		return bytes;
+	}
+
+	public int getOffset() {
+		return offset;
+	}
+
+	public int getLength() {
+		return length;
+	}
 }

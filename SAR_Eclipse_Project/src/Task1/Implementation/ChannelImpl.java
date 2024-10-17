@@ -140,4 +140,29 @@ public class ChannelImpl extends Channel {
 		return this.isDisconnected;
 	}
 
+	public CircularBuffer getIn() {
+		return in;
+	}
+
+	public void setIn(CircularBuffer in) {
+		this.in = in;
+	}
+
+	public CircularBuffer getOut() {
+		return out;
+	}
+
+	public void setOut(CircularBuffer out) {
+		this.out = out;
+	}
+
+	public ChannelImpl getRemoteChannel() {
+		return remoteChannel;
+	}
+
+	public void setRemoteChannel(ChannelImpl remoteChannel) {
+		this.remoteChannel = remoteChannel;
+	}
+	
+	
 }
