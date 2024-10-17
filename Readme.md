@@ -24,6 +24,6 @@ Tasks are Eclipse projects running under Java 17.
 
 # Task4: full events
 
-- [Specification](https://github.com/arlealexandre/arlea-SAR/blob/main/Task4/Specification.md)
+- [Specification](https://github.com/arlealexandre/arlea-SAR/tree/Task4/Specification.md)
 - [Design](https://github.com/arlealexandre/arlea-SAR/blob/main/Task4/Design.md)
 - [Implementation](https://github.com/arlealexandre/arlea-SAR/tree/main/SAR_Eclipse_Project/src/Task4)
